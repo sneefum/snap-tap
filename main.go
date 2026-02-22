@@ -66,6 +66,12 @@ func main() {
 					keyUp(keyboard, input.keycode)
 				case 1:
 					keyDown(keyboard, input.keycode)
+					if input.keycode == 32 { // D
+						keyUp(keyboard, 30) // A
+					}
+					if input.keycode == 30 {
+						keyUp(keyboard, 32)
+					}
 			}
 			if input.keycode == 1 { // esc
 				return
