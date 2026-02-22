@@ -1,13 +1,18 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"os"
 	"encoding/binary"
 
 	"golang.org/x/sys/unix"
+	"gopkg.in/yaml.v2"
 	"github.com/bendahl/uinput"
 )
+
+type Config struct {
+	Combinations [][2]int `yaml:"combinations"`
+}
 
 type timeval struct {
 	seconds uint64
@@ -26,6 +31,19 @@ var EVIOCGRAB uint = 0x40044590
 var keys_pressed []uint16
 
 func main() {
+	config_data, err := os.ReadFile("./config.yml")
+	if err != nil {
+		panic(err)
+	}
+
+	config := Config{}
+	err = yaml.Unmarshal([]byte(config_data), &config)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%v+\n", config)
+
 	f, err := os.Open("/dev/input/event12")
 	if err != nil {
 		panic(err)
@@ -69,8 +87,8 @@ func main() {
 					if input.keycode == 32 { // D
 						keyUp(keyboard, 30) // A
 					}
-					if input.keycode == 30 {
-						keyUp(keyboard, 32)
+					if input.keycode == 30 { // A
+						keyUp(keyboard, 32) // D
 					}
 			}
 			if input.keycode == 1 { // esc
