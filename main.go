@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"os"
 	"encoding/binary"
 
@@ -22,6 +22,8 @@ type input_event struct {
 }
 
 var EVIOCGRAB uint = 0x40044590
+
+var keys_pressed []uint16
 
 func main() {
 	f, err := os.Open("/dev/input/event12")
@@ -57,17 +59,32 @@ func main() {
 			keycode: binary.LittleEndian.Uint16(buf[18:20]),
 			value: binary.LittleEndian.Uint32(buf[20:24]),
 		}
- 		fmt.Printf("%+v\n", input)
+
 		if input.input_type == 1 {
 			switch input.value {
 				case 0:
-					keyboard.KeyUp(int(input.keycode))
+					keyUp(keyboard, input.keycode)
 				case 1:
-					keyboard.KeyDown(int(input.keycode))
+					keyDown(keyboard, input.keycode)
 			}
 			if input.keycode == 1 { // esc
 				return
 			}
 		}
 	}
+}
+
+func keyUp(keyboard uinput.Keyboard, keycode uint16) {
+	keyboard.KeyUp(int(keycode))
+	for i, v := range keys_pressed {
+		if v == keycode {
+			keys_pressed = append(keys_pressed[:i], keys_pressed[i+1:]...)
+			break
+		}
+	 }
+}
+
+func keyDown(keyboard uinput.Keyboard, keycode uint16) {
+	keyboard.KeyDown(int(keycode))
+	keys_pressed = append(keys_pressed, keycode)
 }
