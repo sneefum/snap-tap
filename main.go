@@ -42,8 +42,6 @@ func main() {
 
 	defer unix.IoctlSetInt(int(f.Fd()), EVIOCGRAB, 0)
 
-	keyboard.KeyPress(uinput.KeyA)
-
 
 	buf := make([]byte, 24)
 
@@ -60,5 +58,16 @@ func main() {
 			value: binary.LittleEndian.Uint32(buf[20:24]),
 		}
  		fmt.Printf("%+v\n", input)
+		if input.input_type == 1 {
+			switch input.value {
+				case 0:
+					keyboard.KeyUp(int(input.keycode))
+				case 1:
+					keyboard.KeyDown(int(input.keycode))
+			}
+			if input.keycode == 1 { // esc
+				return
+			}
+		}
 	}
 }
