@@ -30,6 +30,18 @@ var EVIOCGRAB uint = 0x40044590
 
 var keys_pressed []uint16
 
+func findPair(c *Config, x int) *int {
+	for _, row := range c.Combinations {
+		if row[0] == x {
+			return &row[1]
+		}
+		if row[1] == x {
+			return &row[0]
+		}
+	}
+	return nil
+}
+
 func main() {
 	config_data, err := os.ReadFile("./config.yml")
 	if err != nil {
@@ -42,31 +54,40 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("%v+\n", config)
+	fmt.Printf("Loaded config.yml!\n")
 
-	f, err := os.Open("/dev/input/event12")
+	f, err := os.Open("/dev/input/by-path/pci-0000:01:00.0-usb-0:9:1.0-event-kbd")
 	if err != nil {
 		panic(err)
 	}
 	defer f.Close()
 
+	fmt.Printf("Opened keyboard device!\n")
 	
 	keyboard, err := uinput.CreateKeyboard("/dev/uinput", []byte("testkeyboard"))
 	if err != nil {
 		return
 	}
+
+	fmt.Printf("Created uinput device!\n")
 	
 	defer keyboard.Close()
 
 	unix.IoctlSetInt(int(f.Fd()), EVIOCGRAB, 1)
-
+	
 	defer unix.IoctlSetInt(int(f.Fd()), EVIOCGRAB, 0)
-
 
 	buf := make([]byte, 24)
 
+	fmt.Printf("Made input buffer!\n")
+
 	for {
-		f.Read(buf)
+		n, err := f.Read(buf)
+
+		if err != nil {
+        	panic(err)
+    	}
+
 		time := timeval{
 			seconds: binary.LittleEndian.Uint64(buf[0:8]),
 			microseconds: binary.LittleEndian.Uint64(buf[8:16]),
@@ -78,18 +99,20 @@ func main() {
 			value: binary.LittleEndian.Uint32(buf[20:24]),
 		}
 
+		if n != 24 {
+        	fmt.Println("Partial read:", n)
+        	continue
+   		}
+
+    	fmt.Println("Event bytes:", buf)
+
 		if input.input_type == 1 {
 			switch input.value {
 				case 0:
 					keyUp(keyboard, input.keycode)
 				case 1:
 					keyDown(keyboard, input.keycode)
-					if input.keycode == 32 { // D
-						keyUp(keyboard, 30) // A
-					}
-					if input.keycode == 30 { // A
-						keyUp(keyboard, 32) // D
-					}
+					keyUp(keyboard, uint16(*findPair(&config, int(input.keycode))))
 			}
 			if input.keycode == 1 { // esc
 				return
